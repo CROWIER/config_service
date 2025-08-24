@@ -1,0 +1,49 @@
+# Development Dockerfile
+FROM python:3.12-slim
+
+# Устанавливаем системные зависимости
+RUN apt-get update && apt-get install -y \
+    gcc \
+    libpq-dev \
+    curl \
+    vim \
+    && rm -rf /var/lib/apt/lists/*
+
+# Устанавливаем рабочую директорию
+WORKDIR /app
+
+# Устанавливаем Poetry
+RUN pip install poetry
+
+# Копируем файлы конфигурации Poetry
+COPY pyproject.toml poetry.lock ./
+
+# Настраиваем Poetry для работы в Docker
+RUN poetry config virtualenvs.create false
+
+# Устанавливаем зависимости (включая dev)
+RUN poetry install --no-interaction --no-ansi
+
+# Копируем исходный код
+COPY . .
+
+# Создаем пользователя для безопасности
+RUN useradd --create-home --shell /bin/bash app \
+    && chown -R app:app /app
+USER app
+
+# Открываем порт
+EXPOSE 8080
+
+# Переменные окружения для разработки
+ENV POSTGRES_HOST=postgres
+ENV POSTGRES_PORT=5432
+ENV POSTGRES_DB=config_db
+ENV POSTGRES_USER=postgres
+ENV POSTGRES_PASSWORD=postgres
+ENV PORT=8080
+ENV LOG_LEVEL=DEBUG
+ENV PYTHONPATH=/app/src
+
+# Команда запуска для разработки
+CMD ["python", "-m", "src.config.main"] 
